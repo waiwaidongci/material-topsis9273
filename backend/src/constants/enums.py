@@ -9,3 +9,5 @@ class Direction(StrEnum):
     BENEFIT='benefit'; COST='cost'
 class MetricCode(StrEnum):
     ABSORPTION='absorption'; IMPACT='impact'; CARBON='carbon'; PRICE='price'; THICKNESS='thickness'
+class RetestConclusion(StrEnum):
+    IMPROVED='improved'; DECLINED='declined'; INCONCLUSIVE='inconclusive'; INSUFFICIENT='insufficient'

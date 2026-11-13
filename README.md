@@ -6,7 +6,7 @@
 
 芦砚声学材料研究室有13位产品研究员，为展厅、会议室与薄型走廊研发声学板样。上游检测组提供 `LYM_20261112_试样汇总.csv`，记录36份匿名机构试样的吸声、耐冲击、碳强度、单位面积单价和厚度。研究员过去手工把量纲不同的列相加，成本方向偶尔写反；改了一组权重后排名变动很大，纪要却只留下第一名。
 
-本册替代“核对数据/方向→写明偏好→权衡与敏感性→提出验证问题→审阅分发”这一段。下游实验员收到已批准的试样计划CSV，开展独立湿热、吸声与冲击复测。候选排名不等于合格率，系统不采集真实供应商报价，不作采购建议。
+本册替代“核对数据/方向→写明偏好→权衡与敏感性→提出验证问题→审阅分发”这一段。下游实验员收到已批准的试样计划CSV，开展独立湿热、吸声与冲击复测。复测回传后按同一试件与冻结前值配对，给出平均变化及其不确定范围并逐版留档。候选排名不等于合格率，系统不采集真实供应商报价，不作采购建议。
 
 | 角色 | 页面 | 权限 | 典型动作 |
 |---|---|---|---|
@@ -27,6 +27,8 @@
 7. 09:30 查看全部40页情景留档，每页25次；每次保留5个权重、36份贴近度/平均名次及并列首位分摊。
 8. 09:40 提出“LY23湿热条件吸声复测”，把权衡中的取舍、复测条件与原始报告要求写进计划。余芦用admin审阅，说明采购另行审议。
 9. 10:00 季乔用viewer下载 `trial-note-<id>.csv`，含审批、方案、快照指纹、5项中心权重及36份摘要。新检测结果回资料库后需另建任务，旧结果不改写。
+10. 11:00 实验员完成湿热复测，林砚在已同意计划的“复测回传与配对分析”中按 `编号,指标,数值,单位` 逐行录入；数值留空记为缺测。重复投递的同试件同指标行不重复计入；缺测行后补数值记为补测，不覆盖既有不同值。
+11. 11:10 点击“生成配对分析版本”：系统把每条回传与批准计划所依据run的冻结快照按试件编号配对，给出每指标平均变化与95%配对t不确定范围。配对不足3对或区间跨0时不下改善或衰减结论；缺测、单位不符、非快照试件、超口径范围的记录单列排除原因。补测后生成新版本，每版保留采用的配对与排除明细及记录指纹，旧版结论CSV仍可下载；原权衡结果与审批记录不变。
 
 以上数值来自固定seed真实计算；seed只插入输入，不预置模型结果。
 
@@ -92,17 +94,26 @@ C_i = D_i− / (D_i+ + D_i−)
 
 SHA256覆盖算法版本、完整冻结快照、原始中心权重、κ、情景数和seed。固定软件与输入可完整复算，结果同时存数据库和 `/artifacts/run-<id>.json`。指纹包含数据库ID，重建库或改变来源标识不保证相同指纹。运行列表只返回轻量摘要；详情按需读取完整情景，避免轮询反复搬运大JSON。
 
+## 复测配对分析
+
+已同意的试样计划接受复测回传（`/notes/{id}/retests`）。同一计划内 `(指标, 试件编号)` 是回传自然键：完全相同的重复投递不重复计入；缺测行（无数值）之后补到数值记为补测并更新原记录；同键不同值或不同单位判为冲突，不覆盖既有记录。回传值域与试样口径一致，缺测值以空值落库。
+
+生成分析版本时，每条回传与计划所依据run的冻结快照按试件编号配对：不在快照、单位与冻结口径不符、缺测、数值超出口径范围的记录逐条列入排除明细并写明原因，不参与统计。对每个有配对的指标，取 `delta = 复测值 − 冻结前值`，报告配对数、平均变化、样本标准差（ddof=1）、标准误与双侧95%配对t不确定范围；t临界值来自固定分位表，自由度落档之间取较小档，区间只放宽不收窄。配对数达到3且整个区间落在0的同一侧时，按指标方向给出改善或衰减结论；区间跨0为“未见可区分变化”，配对不足3对为“配对不足”，这两种情况都不下改善或衰减结论。该范围描述本批复测的配对差值，不是采购建议。
+
+每版分析不可变，detail记录算法版本、快照指纹、回传指纹、全部配对与排除明细，同时写 `/artifacts/retest-analysis-<id>.json`；回传指纹与上一版相同时拒绝生成重复版本。补测改变指纹后可生成新版本，页面按版本追溯采用的明细，任意旧版结论CSV可再下载。分析只读冻结快照与回传记录，不回写权衡结果、试样资料或审批。
+
 ## 工程结构与开发
 
 ```text
 backend/src/{models,schemas,services,controllers,routes}  五个独立业务链
 backend/src/services/{normalization,topsis,weight_sensitivity}.py
+backend/src/services/{retest_service,retest_analysis}.py  复测回传与配对分析
 backend/src/{config,constants,middlewares,utils}/
-backend/{scripts/seed_demo.py,migrations/001_initial.sql}
+backend/{scripts/seed_demo.py,migrations/001_initial.sql,migrations/002_retest.sql}
 frontend/src/{api,stores,types,constants,components/common,hooks,pages,router,utils}/
 ```
 
-CandidateStudy、MaterialSample、Criterion、DecisionRun、TrialNote分别有独立model/schema/service/controller/route/API。studyStore管理研究及指标、sampleStore管理资料、researchStore管理任务/计划；六页为总览、输入口径、配置、结果、审阅、审计，登录另计。StudySelect复用于总览/输入/配置，PageHeading、ErrorNotice、StatusBadge等共享；RunSelect、WeightStrip、RankIntervals负责业务展示。
+CandidateStudy、MaterialSample、Criterion、DecisionRun、TrialNote分别有独立model/schema/service/controller/route/API；RetestRecord、RetestAnalysis挂在试样计划路由下。studyStore管理研究及指标、sampleStore管理资料、researchStore管理任务/计划/回传与分析；六页为总览、输入口径、配置、结果、审阅、审计，登录另计。StudySelect复用于总览/输入/配置，PageHeading、ErrorNotice、StatusBadge等共享；RunSelect、WeightStrip、RankIntervals、RetestPanel负责业务展示。
 
 共享枚举Role、RunStatus、NoteStatus、Direction、MetricCode位于 `backend/src/constants/enums.py` 与 `frontend/src/constants/enums.ts`（类型联集在 `frontend/src/types/domain.ts`）；被auth依赖、criterion/note schema、services/worker状态、前端状态组件、口径与运行/结果/审阅页使用。
 

@@ -3,5 +3,6 @@ from src.models.sample import MaterialSample
 from src.models.criterion import Criterion
 from src.models.run import DecisionRun
 from src.models.note import TrialNote
+from src.models.retest import RetestRecord,RetestAnalysis
 from src.models.user import User
 from src.models.audit import Audit

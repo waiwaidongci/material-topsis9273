@@ -10,3 +10,12 @@ export interface Snapshot{study:Study;samples:Sample[];criteria:Criterion[]}
 export interface RunSummary{id:number;name:string;study_id:number;center_weights:Record<string,number>;concentration:number;repeats:number;seed:number;status:'queued'|'running'|'completed'|'failed';summary:{samples:number;criteria:number;fingerprint?:string;all_indistinguishable?:boolean};error:string;created_at:string}
 export interface Run extends RunSummary{snapshot:Snapshot;result:Result}
 export interface Note{id:number;name:string;run_id:number;sample_id:number;protocol:string;status:'draft'|'approved'|'rejected';reviewer_note:string;reviewed_by:string;created_at:string}
+export type RetestConclusion='improved'|'declined'|'inconclusive'|'insufficient';
+export interface RetestRecord{id:number;note_id:number;metric:string;sample_code:string;value:number|null;unit:string;batch:string;submitted_by:string;created_at:string}
+export interface RetestConflict{sample_code:string;metric:string;reason:string}
+export interface RetestSubmitResult{accepted:number;supplemented:number;duplicates:number;conflicts:RetestConflict[]}
+export interface MetricStats{unit:string;direction:Direction;pairs:number;mean_delta:number|null;std:number|null;se:number|null;t_crit:number|null;ci_low:number|null;ci_high:number|null;conclusion:RetestConclusion}
+export interface RetestPair{record_id:number;code:string;metric:string;pre:number;post:number;delta:number}
+export interface RetestExclusion{record_id:number;code:string;metric:string;reason:string}
+export interface AnalysisDetail{algorithm:string;min_pairs:number;snapshot_fingerprint:string;record_count:number;records_fingerprint:string;headline_metric:MetricCode|null;conclusion:RetestConclusion;metrics:Record<string,MetricStats>;pairs:RetestPair[];exclusions:RetestExclusion[]}
+export interface RetestAnalysis{id:number;note_id:number;version:number;created_by:string;created_at:string;detail:AnalysisDetail}
